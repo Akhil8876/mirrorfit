@@ -230,7 +230,7 @@ function Review() {
           <div className="row"><h2 className="grow" style={{ margin: 0 }}>Detected elements</h2><span className={'tag ' + (pending.length ? 'warn' : 'ok')}>{pending.length ? `${pending.length} to confirm` : 'all confirmed'}</span></div>
           <div className="row">
             <button className="btn sm primary" disabled={!pending.length} onClick={() => confirm(pending.filter((p) => (p.det?.confidence ?? 0) >= 0.85).map((p) => p.id))}>Confirm all ≥ 85%</button>
-            <button className="btn sm" disabled={!pending.length} onClick={() => { if (confirm_(`Confirm all ${pending.length} remaining elements, including low-confidence ones?`)) confirm(pending.map((p) => p.id)); }}>Confirm all</button>
+            <button className="btn sm" disabled={!pending.length} onClick={() => { confirm(pending.map((p) => p.id)); }}>Confirm all</button>
           </div>
           <div className="tablewrap" style={{ maxHeight: 330 }}>
             <table className="t"><tbody>
