@@ -46,7 +46,8 @@ export const SAMPLE_LABELS: { text: string; pos: Vec2 }[] = [
   { text: 'TOILET', pos: { x: 4750, y: 7100 } },
 ];
 
-export function buildSampleDxf(): string {
+/** A DXF writer with the standard architect layers and the door, window, WC and basin blocks. */
+export function planWriter(): DxfWriter {
   const w = new DxfWriter(4);
   w.layer('A-WALL', 7); w.layer('A-DOOR', 3); w.layer('A-GLAZ', 4); w.layer('S-COLS', 1);
   w.layer('A-ANNO-TEXT', 2); w.layer('A-ANNO-DIMS', 6); w.layer('P-SANR', 5); w.layer('A-FURN', 8);
@@ -71,12 +72,17 @@ export function buildSampleDxf(): string {
     w.circle('0', { x: 0, y: 225 }, 150, t);
   });
 
-  SAMPLE_WALLS.forEach((wall, wi) => {
+  return w;
+}
+
+/** Draw double-line walls with gaps, jambs, door blocks and window blocks, the way architects draw them. */
+export function drawWalls(w: DxfWriter, walls: SampleWall[], openings: SampleOpening[]) {
+  walls.forEach((wall, wi) => {
     const d = norm(sub(wall.b, wall.a));
     const n = perp(d);
     const L = len(sub(wall.b, wall.a));
     const ext = wall.t >= 200 ? wall.t / 2 : 0; // exterior faces run to the outer corner
-    const cuts = SAMPLE_OPENINGS.filter((o) => o.wall === wi).map((o) => [o.at - o.w / 2, o.at + o.w / 2]).sort((a, b) => a[0] - b[0]);
+    const cuts = openings.filter((o) => o.wall === wi).map((o) => [o.at - o.w / 2, o.at + o.w / 2]).sort((a, b) => a[0] - b[0]);
     const pieces: [number, number][] = [];
     let s = -ext;
     for (const [c0, c1] of cuts) { pieces.push([s, c0]); s = c1; }
@@ -89,8 +95,8 @@ export function buildSampleDxf(): string {
     for (const [c0, c1] of cuts) for (const c of [c0, c1]) w.line('A-WALL', add(add(wall.a, mul(d, c)), mul(n, wall.t / 2)), add(add(wall.a, mul(d, c)), mul(n, -wall.t / 2)));
   });
 
-  for (const o of SAMPLE_OPENINGS) {
-    const wall = SAMPLE_WALLS[o.wall];
+  for (const o of openings) {
+    const wall = walls[o.wall];
     const d = norm(sub(wall.b, wall.a));
     const n = perp(d);
     const ang = (Math.atan2(d.y, d.x) * 180) / Math.PI;
@@ -106,6 +112,12 @@ export function buildSampleDxf(): string {
       w.insert('A-GLAZ', 'WIN_1', add(wall.a, mul(d, o.at - o.w / 2)), o.w, wall.t, ang);
     }
   }
+
+}
+
+export function buildSampleDxf(): string {
+  const w = planWriter();
+  drawWalls(w, SAMPLE_WALLS, SAMPLE_OPENINGS);
 
   // Columns at the frame corners and where the spine wall meets the north facade.
   const cols: [number, number, number, number][] = [[-115, -115, 1, 1], [10115, -115, -1, 1], [10115, 8115, -1, -1], [-115, 8115, 1, -1]];

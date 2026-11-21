@@ -4,6 +4,7 @@ import { createProject } from './core/project';
 import { parseDxf } from './core/dxf';
 import { importDxf } from './core/detect';
 import { buildSampleDxf } from './core/sample';
+import { createFlat409Project } from './core/flat409';
 import { nowIso } from './core/util';
 import type { JobEvent } from './core/orchestrator';
 
@@ -119,6 +120,14 @@ export function openSample() {
   p.audit.push({ at: nowIso(), by: p.settings.user, action: `Imported sample-2bhk.dxf: ${res.stats.walls} walls, ${res.stats.openings} openings, ${res.stats.rooms} rooms` });
   set({ project: p, past: [], future: [], underlays: res.underlays, ui: { ...state.ui, view: 'import', floorId: p.floors[0]?.id, selection: null } });
   saveNow();
+}
+
+/** Flat 409 – built from the "Quiet Warmth" concept book and the Flat 409 estimate. */
+export function openFlat409() {
+  const { project, underlays } = createFlat409Project(state.project?.settings.user ?? 'Designer');
+  set({ project, past: [], future: [], underlays, ui: { ...state.ui, view: 'design', floorId: project.floors[0]?.id, selection: null } });
+  saveNow();
+  toast('Flat 409 project created from the concept book');
 }
 
 export function closeProject() { saveNow(); set({ project: null, ui: { ...state.ui, view: 'home', selection: null } }); }

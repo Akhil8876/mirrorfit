@@ -120,7 +120,8 @@ export function pairWallFaces(segs: Seg[]): Piece[] {
       if (d < 40 || d > 450) continue;
       const t0 = projectParam(B.a, A.a, A.b) * A.L, t1 = projectParam(B.b, A.a, A.b) * A.L;
       const lo = Math.max(0, Math.min(t0, t1)), hi = Math.min(A.L, Math.max(t0, t1));
-      if (hi - lo < Math.min(A.L, B.L) * 0.5 || hi - lo < 50) continue;
+      // both faces of one wall run side by side for most of their length; a short jamb next to a long face is not a wall
+      if (hi - lo < Math.max(A.L, B.L) * 0.5 || hi - lo < 50) continue;
       if (d < bd) { bd = d; bj = j; }
     }
     return { j: bj, d: bd };
@@ -240,7 +241,7 @@ function buildWalls(pieces: Piece[], cands: OpeningCand[], user: string): { wall
       const cand = cands.find((c) => !usedCands.has(c) && (
         c.kind === 'window'
           ? dist(c.center, mid) < Math.max(line.t, 150) && Math.abs(c.extent - gap) < 120
-          : !!c.hinge && Math.min(dist(c.hinge, P(cur.e)), dist(c.hinge, P(nx.s))) < line.t + 60
+          : !!c.hinge && Math.abs((c.r ?? 0) - gap) < 250 && Math.min(dist(c.hinge, P(cur.e)), dist(c.hinge, P(nx.s))) < line.t + 60
       ));
       if (cand || gap <= 1500) {
         if (cand) usedCands.add(cand);
@@ -433,7 +434,7 @@ export function defaultFinishes(type: RoomType): Room['finishes'] {
   };
 }
 
-function titleCase(s: string) { return s.toLowerCase().replace(/\b[a-z]/g, (c) => c.toUpperCase()).replace(/\s+/g, ' ').trim(); }
+function titleCase(s: string) { return s.toLowerCase().replace(/(^|[\s/(-])[a-z]/g, (c) => c.toUpperCase()).replace(/\s+/g, ' ').trim(); }
 
 function markExterior(walls: Wall[], columns: Column[]) {
   const g = rasterize(walls, columns);
@@ -502,8 +503,11 @@ export function importDxf(doc: DxfDoc, opts: ImportOptions = {}): ImportResult {
   const wallSegs = ents.filter((e) => role(e.layer) === 'wall').flatMap(segmentsOf);
   const pieces = pairWallFaces(wallSegs);
   const cands = openingCandidates(ents, role);
-  const { walls: allWalls, openings: allOpenings } = buildWalls(pieces, cands, user);
-  snapWallEndpoints(allWalls);
+  const built = buildWalls(pieces, cands, user);
+  snapWallEndpoints(built.walls);
+  // jambs of neighbouring openings can pair up into stubs that collapse to nothing once snapped
+  const allWalls = built.walls.filter((w) => dist(w.a, w.b) >= 100 || built.openings.some((o) => o.wallId === w.id));
+  const allOpenings = built.openings.filter((o) => allWalls.some((w) => w.id === o.wallId));
 
   // Columns / structural layer (IMP-40)
   const allColumns: Column[] = [];
